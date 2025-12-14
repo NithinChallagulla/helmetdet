@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import Hls from "hls.js";
+import { useEffect, useState } from "react";
 
-const API_BASE = "";
+const API_BASE = window.location.origin; 
+// IMPORTANT: frontend + backend must be same origin
 
 function getColor(p) {
   if (p < 50) return "danger";
@@ -12,56 +12,47 @@ function getColor(p) {
 export default function App() {
   const [streams, setStreams] = useState([]);
   const [active, setActive] = useState(null);
-  const videoRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStreams = async () => {
+    const loadStreams = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/streams`);
-        const json = await res.json();
-        if (json.streams?.length) {
-          setStreams(json.streams);
-          if (!active || !json.streams.find(s => s.id === active.id)) {
-            setActive(json.streams[0]);
-          }
+        const data = await res.json();
+
+        if (data.streams && data.streams.length > 0) {
+          setStreams(data.streams);
+          setActive(data.streams[0]);
+        } else {
+          setStreams([]);
         }
       } catch (err) {
-        console.error("API fetch error:", err);
+        console.error("Failed to fetch streams", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchStreams();
-    const interval = setInterval(fetchStreams, 3000);
-    return () => clearInterval(interval);
-  }, [active]);
+    loadStreams();
+    const i = setInterval(loadStreams, 3000);
+    return () => clearInterval(i);
+  }, []);
 
-  useEffect(() => {
-    if (!active || !videoRef.current) return;
-
-    const hlsUrl = `${API_BASE}/hls/${active.id}.m3u8`;
-
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(hlsUrl);
-      hls.attachMedia(videoRef.current);
-      return () => hls.destroy();
-    } else {
-      videoRef.current.src = hlsUrl;
-    }
-  }, [active]);
-
-  if (!active) {
-    return (
-      <div className="app">
-        <p>Waiting for streams...</p>
-      </div>
-    );
+  if (loading) {
+    return <div className="loading">Loading streams…</div>;
   }
 
-  const colorClass = getColor(active.helmet_percent);
+  if (!active) {
+    return <div className="loading">Waiting for streams…</div>;
+  }
+
+  const percent = active.helmet_percent || 0;
+  const colorClass = getColor(percent);
+  const hlsUrl = `${API_BASE}/hls/${active.id}.m3u8`;
 
   return (
     <div className="app">
+      {/* Stream Selector */}
       <div className="stream-bar">
         <select
           value={active.id}
@@ -71,27 +62,26 @@ export default function App() {
         >
           {streams.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.location || s.id}
+              {s.location}
             </option>
           ))}
         </select>
       </div>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{ display: "none" }}
-      />
-
+      {/* Main Content */}
       <div className="content">
-        <div className={`helmet ${colorClass}`}>
-<img src="/helmet.png" alt="Helmet" />
-        </div>
+        <video
+          src={hlsUrl}
+          controls
+          autoPlay
+          muted
+          playsInline
+          className="video"
+        />
+
         <div className="stats">
           <div className={`percent ${colorClass}`}>
-            {active.helmet_percent.toFixed(1)}%
+            {percent.toFixed(1)}%
           </div>
           <div className="label">Helmet Compliance</div>
           <div className="counts">
