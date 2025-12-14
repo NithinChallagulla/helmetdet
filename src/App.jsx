@@ -87,7 +87,7 @@ export default function App() {
 
       <div className="content">
         <div className={`helmet ${colorClass}`}>
-          <img src="/helmet.png" alt="Helmet" />
+<img src="/helmet.png" alt="Helmet" />
         </div>
         <div className="stats">
           <div className={`percent ${colorClass}`}>
