@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Hls from "hls.js";
 
-const API_BASE = "http://34.47.215.32";
+const API_BASE = "";
 
 function getColor(p) {
   if (p < 50) return "danger";
